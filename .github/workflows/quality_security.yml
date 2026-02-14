@@ -629,15 +629,12 @@ jobs:
         run: |
           version="${{ steps.version.outputs.version }}"
           echo "Extracting release notes for version: $version"
-
+      
           if [ -f "CHANGELOG.md" ]; then
-            sed -n "/^## 
-
-\[$version\]
-
-/,/^## 
-
-\[/p" CHANGELOG.md | sed '$ d' > release_notes.txt
+            # Extract section for the version header "## [<version>]" until the next "## [" header
+            sed -n "/^##  \[$version\]/,/^## \[/p" CHANGELOG.md | sed '$ d' > release_notes.txt
+      
+            # If extraction produced nothing, create a default release note
             if [ ! -s release_notes.txt ]; then
               echo "## Release v$version" > release_notes.txt
               echo "" >> release_notes.txt
@@ -657,10 +654,11 @@ jobs:
           echo "" >> release_notes.txt
           echo "### 🔒 Security Scan" >> release_notes.txt
           echo "CVE vulnerability reports are attached to this release." >> release_notes.txt
-
+      
           echo ""
           echo "=== Release Notes Preview ==="
           cat release_notes.txt
+
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
