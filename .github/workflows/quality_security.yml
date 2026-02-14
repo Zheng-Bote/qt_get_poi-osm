@@ -6,27 +6,6 @@ name: C++ Quality & Security
 # License: MIT
 # Date: 2026-02-08
 
-# Qt version: 6.9.*
-# C++ standard: C++23
-# Compiler: gcc-14, g++-14
-
-# Upload artifact name: cppcheck-report
-# Upload artifact path: cppcheck-report.txt
-# Upload artifact name: clang-tidy-report
-# Upload artifact path: clang-tidy-report.txt
-# Upload artifact name: sbom-spdx
-# Upload artifact path: sbom-spdx.json
-# Upload artifact name: sbom-cyclonedx
-# Upload artifact path: sbom-cyclonedx.json
-
-# create Release on tag "v*" with artifacts:
-# - CHANGELOG.md
-# - cve-report-all.json
-# - cve-report-critical.json
-# - cve-summary.txt
-# - spdx.json
-# - cyclonedx.json
-
 run-name: C++ Quality & Security by ${{ github.actor }}
 
 on:
@@ -78,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Cppcheck
+      - name: Install Cppcheck and tools
         run: sudo apt-get update && sudo apt-get install -y cppcheck jq
 
       - name: Install build dependencies
@@ -94,9 +73,18 @@ jobs:
 
       - name: Configure CMake (generate compile_commands.json)
         run: |
-          cmake --build build-cppcheck --target moc || true
           cmake -S . -B build-cppcheck -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14
+          # copy initial compile_commands.json if present
           cp build-cppcheck/compile_commands.json . 2>/dev/null || true
+
+      - name: Generate Qt autogen files (minimal build to produce moc/uis)
+        run: |
+          echo "=== Generating Qt autogen files (moc/uis/qrc) ==="
+          # Build targets to generate autogen files; tolerate non-zero exit to avoid failing CI if build errors exist
+          cmake --build build-cppcheck --target all -- -j$(nproc) || true
+          # Ensure compile_commands.json is up-to-date
+          cp build-cppcheck/compile_commands.json . 2>/dev/null || true
+          echo "=== Autogen generation step complete ==="
 
       - name: Debug - Check compile_commands.json
         run: |
@@ -105,37 +93,66 @@ jobs:
             ls -lah compile_commands.json
             echo "=== Total entries in compile_commands.json ==="
             jq 'length' compile_commands.json
-            echo "=== Files in compile_commands.json ==="
-            jq -r '.[].file' compile_commands.json | sort -u
+            echo "=== Files in compile_commands.json (sample) ==="
+            jq -r '.[].file' compile_commands.json | sort -u | head -50
           else
             echo "compile_commands.json not found, will use direct file paths"
           fi
 
-      - name: Filter compile_commands.json (only project files, skip _deps)
+      - name: Filter compile_commands.json (remove missing and _deps/autogen entries)
+        shell: bash
         run: |
-          echo "=== Filtering compile_commands.json ==="
+          set -euo pipefail
+          CCDB="compile_commands.json"
+          FILTERED="compile_commands.filtered.json"
 
-          if [ -f compile_commands.json ]; then
-            # Filter out _deps and keep only cli/, include/, tests/
-            jq '[.[] | select(.file | contains("_deps") | not)]' compile_commands.json > compile_commands_filtered.json
-            
-            echo "=== Original entries ==="
-            jq 'length' compile_commands.json
-            
-            echo "=== Filtered entries (excluding _deps) ==="
-            jq 'length' compile_commands_filtered.json
-            
-            echo "=== Files to analyze ==="
-            jq -r '.[].file' compile_commands_filtered.json | sort -u
-            
-            mv compile_commands_filtered.json compile_commands.json
+          if [ -f "$CCDB" ] && [ "$(jq 'length' "$CCDB")" -gt 0 ]; then
+            echo "Filtering compile_commands.json: keeping only entries whose files exist and excluding _deps/autogen"
+            tmp=$(mktemp)
+
+            jq -c '.[]' "$CCDB" | while IFS= read -r entry; do
+              file=$(printf '%s' "$entry" | jq -r '.file')
+              dir=$(printf '%s' "$entry" | jq -r '.directory')
+              path="$dir/$file"
+              # Normalize path (remove redundant ./)
+              path=$(python3 - <<PY
+import os,sys
+p=sys.argv[1]
+print(os.path.normpath(p))
+PY
+"$path")
+              if [ -f "$path" ]; then
+                printf '%s\n' "$entry"
+              else
+                case "$path" in
+                  *"_deps/"*|*"/autogen/"*|*"/moc_"*|*"/mocs_compilation.cpp"*)
+                    printf 'Skipping generated or _deps file: %s\n' "$path" >&2
+                    ;;
+                  *)
+                    printf 'Skipping missing file: %s\n' "$path" >&2
+                    ;;
+                esac
+              fi
+            done > "$tmp"
+
+            jq -s '.' "$tmp" > "$FILTERED"
+            rm -f "$tmp"
+
+            if [ "$(jq 'length' "$FILTERED")" -gt 0 ]; then
+              mv "$FILTERED" "$CCDB"
+              echo "Filtered compile_commands.json written (entries: $(jq 'length' "$CCDB"))"
+            else
+              echo "Filtered compile_commands.json is empty; removing and falling back to direct paths"
+              rm -f "$FILTERED" "$CCDB"
+            fi
+          else
+            echo "No compile_commands.json found or file is empty"
           fi
 
       - name: Run Cppcheck
         shell: bash
         run: |
           echo "=== Starting Cppcheck Analysis ==="
-          cmake --build build-cppcheck --target moc || true
 
           if [ -f compile_commands.json ] && [ "$(jq 'length' compile_commands.json)" -gt 0 ]; then
             echo "Using compile_commands.json for analysis"
@@ -220,7 +237,6 @@ jobs:
         run: |
           echo "=== Starting Clang-Tidy Analysis ==="
 
-          # Get list of source files from compile_commands.json
           FILES=$(jq -r '.[].file' build-clangtidy/compile_commands.json 2>/dev/null | sort -u)
 
           if [ -z "$FILES" ]; then
@@ -231,7 +247,6 @@ jobs:
           echo "Files to analyze:"
           echo "$FILES"
 
-          # Run clang-tidy on each file
           echo "$FILES" | xargs clang-tidy -p build-clangtidy --quiet 2>&1 | tee clang-tidy-report.txt || true
 
           echo "=== Clang-Tidy Analysis Complete ==="
@@ -314,9 +329,6 @@ jobs:
         run: |
           pip install reuse
           npm install -g @cyclonedx/cdxgen
-          # Optional: Atom tool (falls benötigt)
-          # wget https://github.com/AppThreat/atom/releases/download/v2.5.2/atom.zip
-          # unzip atom.zip
 
       - name: Prepare Output Directory
         run: mkdir -p sbom-output
@@ -328,7 +340,6 @@ jobs:
 
           reuse spdx -o "./sbom-output/spdx-${version}.spdx" || {
             echo "⚠️  SPDX generation failed (this may be OK if REUSE is not configured)"
-            # Create minimal SPDX file as fallback
             {
               echo "SPDXVersion: SPDX-2.3"
               echo "DataLicense: CC0-1.0"
@@ -593,7 +604,6 @@ jobs:
 
           echo ""
           echo "=== CVE Reports ==="
-          # Copy CVE reports
           for file in artifacts/cve/cve-report-critical-${version}.json \
                       artifacts/cve/cve-report-all-${version}.json \
                       artifacts/cve/cve-summary-${version}.txt; do
@@ -607,7 +617,6 @@ jobs:
 
           echo ""
           echo "=== Additional Files ==="
-          # Copy CHANGELOG
           if [ -f "CHANGELOG.md" ]; then
             cp CHANGELOG.md release-assets/
             echo "✓ Copied CHANGELOG.md"
@@ -627,10 +636,13 @@ jobs:
           echo "Extracting release notes for version: $version"
 
           if [ -f "CHANGELOG.md" ]; then
-            # Extract section between version header and next header or end
-            sed -n "/^## \[$version\]/,/^## \[/p" CHANGELOG.md | sed '$ d' > release_notes.txt
-            
-            # If file is empty or doesn't contain the version, create a default
+            sed -n "/^## 
+
+\[$version\]
+
+/,/^## 
+
+\[/p" CHANGELOG.md | sed '$ d' > release_notes.txt
             if [ ! -s release_notes.txt ]; then
               echo "## Release v$version" > release_notes.txt
               echo "" >> release_notes.txt
@@ -642,7 +654,6 @@ jobs:
             echo "No CHANGELOG.md found." >> release_notes.txt
           fi
 
-          # Add SBOM and CVE scan info
           echo "" >> release_notes.txt
           echo "### 📦 Software Bill of Materials (SBOM)" >> release_notes.txt
           echo "This release includes:" >> release_notes.txt
