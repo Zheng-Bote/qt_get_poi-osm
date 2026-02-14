@@ -74,15 +74,12 @@ jobs:
       - name: Configure CMake (generate compile_commands.json)
         run: |
           cmake -S . -B build-cppcheck -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14
-          # copy initial compile_commands.json if present
           cp build-cppcheck/compile_commands.json . 2>/dev/null || true
 
       - name: Generate Qt autogen files (minimal build to produce moc/uis)
         run: |
           echo "=== Generating Qt autogen files (moc/uis/qrc) ==="
-          # Build targets to generate autogen files; tolerate non-zero exit to avoid failing CI if build errors exist
           cmake --build build-cppcheck --target all -- -j$(nproc) || true
-          # Ensure compile_commands.json is up-to-date
           cp build-cppcheck/compile_commands.json . 2>/dev/null || true
           echo "=== Autogen generation step complete ==="
 
@@ -114,13 +111,11 @@ jobs:
               file=$(printf '%s' "$entry" | jq -r '.file')
               dir=$(printf '%s' "$entry" | jq -r '.directory')
               path="$dir/$file"
-              # Normalize path (remove redundant ./)
-              path=$(python3 - <<PY
-import os,sys
-p=sys.argv[1]
-print(os.path.normpath(p))
-PY
-"$path")
+
+              # Normalize path using python3 -c with a single argument (YAML-safe)
+              norm=$(python3 -c 'import os,sys;print(os.path.normpath(sys.argv[1]))' "$path")
+              path="$norm"
+
               if [ -f "$path" ]; then
                 printf '%s\n' "$entry"
               else
@@ -497,7 +492,7 @@ PY
           echo "=== ALL CVEs Report Generated ==="
           if [ -f "cve-report-all-${version}.json" ]; then
             SIZE=$(wc -c < "cve-report-all-${version}.json")
-            echo "Report file size: $SIZE bytes"
+            echo "Report file size: $SIZE bytes
             
             if [ "$SIZE" -gt 10 ]; then
               echo "📊 Summary of all vulnerabilities:"
