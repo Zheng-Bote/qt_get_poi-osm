@@ -147,42 +147,95 @@ jobs:
       - name: Run Cppcheck
         shell: bash
         run: |
+          set -euo pipefail
           echo "=== Starting Cppcheck Analysis ==="
-
+      
+          REPORT="cppcheck-report.txt"
+          FILELIST="cppcheck-filelist.txt"
+          rm -f "$REPORT" "$FILELIST"
+      
+          # Helper: create file list from compile_commands.json (only existing files)
+          create_filelist_from_ccdb() {
+            CCDB="$1"
+            echo "Creating file list from $CCDB"
+            jq -r '.[].file' "$CCDB" 2>/dev/null | while IFS= read -r f; do
+              # If path is relative in compile_commands, try directory field
+              if [ -z "$f" ]; then continue; fi
+              # Try as-is, then try relative to directory in entry
+              if [ -f "$f" ]; then
+                printf '%s\n' "$f"
+              else
+                # try to resolve via directory field
+                # get directory for this file entry
+                dir=$(jq -r --arg file "$f" '.[] | select(.file==$file) | .directory' "$CCDB" 2>/dev/null | head -n1)
+                if [ -n "$dir" ] && [ -f "$dir/$f" ]; then
+                  printf '%s\n' "$dir/$f"
+                else
+                  # try basename search (fallback)
+                  if [ -f "$(basename "$f")" ]; then
+                    printf '%s\n' "$(basename "$f")"
+                  else
+                    echo "Skipping missing file from CCDB: $f" >&2
+                  fi
+                fi
+              fi
+            done | sort -u > "$FILELIST"
+          }
+      
+          # Helper: create file list by scanning source dirs
+          create_filelist_from_dirs() {
+            echo "Scanning source directories for .cpp/.c/.h/.hpp files"
+            # adjust patterns if you use other extensions
+            find cli include tests -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.h' -o -name '*.hpp' \) 2>/dev/null | sort -u > "$FILELIST" || true
+          }
+      
+          # 1) Try compile_commands.json if present and non-empty
           if [ -f compile_commands.json ] && [ "$(jq 'length' compile_commands.json)" -gt 0 ]; then
             echo "Using compile_commands.json for analysis"
-            cppcheck \
-              --enable=all \
-              --inconclusive \
-              --std=c++23 \
-              --project=compile_commands.json \
-              --error-exitcode=0 \
-              --report-progress \
-              2>&1 | tee cppcheck-report.txt
+            create_filelist_from_ccdb compile_commands.json
           else
-            echo "compile_commands.json is empty or missing, using direct file paths"
-            cppcheck \
-              --enable=all \
-              --inconclusive \
-              --std=c++23 \
-              --error-exitcode=0 \
-              --report-progress \
-              cli/ include/ tests/ \
-              2>&1 | tee cppcheck-report.txt
+            echo "compile_commands.json is empty or missing, will scan source directories"
+            create_filelist_from_dirs
           fi
-
+      
+          # If filelist is empty, try scanning common source dirs as fallback
+          if [ ! -s "$FILELIST" ]; then
+            echo "No files found from compile_commands.json. Trying fallback directories."
+            create_filelist_from_dirs
+          fi
+      
+          # Final check: if still empty, abort gracefully (no files to analyze)
+          if [ ! -s "$FILELIST" ]; then
+            echo "No source files found for cppcheck. Skipping analysis."
+            echo "No files" > "$REPORT"
+            exit 0
+          fi
+      
+          echo "Files to analyze (sample):"
+          head -30 "$FILELIST"
+      
+          # Run cppcheck using --file-list (safer for many files)
+          cppcheck \
+            --enable=all \
+            --inconclusive \
+            --std=c++23 \
+            --file-list="$FILELIST" \
+            --error-exitcode=0 \
+            --report-progress \
+            2>&1 | tee "$REPORT"
+      
           echo "=== Cppcheck Analysis Complete ==="
           echo "=== Report Statistics ==="
-          LINES=$(wc -l < cppcheck-report.txt)
+          LINES=$(wc -l < "$REPORT" || echo 0)
           echo "Report has $LINES lines"
-
+      
           if [ "$LINES" -gt 0 ]; then
             echo "=== Sample Output (first 30 lines) ==="
-            head -30 cppcheck-report.txt
+            head -30 "$REPORT"
           else
             echo "✅ Analysis completed with no issues found"
           fi
-
+  
       - name: Upload Cppcheck Report
         uses: actions/upload-artifact@v4
         with:
