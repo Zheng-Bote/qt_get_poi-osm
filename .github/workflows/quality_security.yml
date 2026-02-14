@@ -135,6 +135,7 @@ jobs:
         shell: bash
         run: |
           echo "=== Starting Cppcheck Analysis ==="
+          cmake --build build-cppcheck --target moc || true
 
           if [ -f compile_commands.json ] && [ "$(jq 'length' compile_commands.json)" -gt 0 ]; then
             echo "Using compile_commands.json for analysis"
