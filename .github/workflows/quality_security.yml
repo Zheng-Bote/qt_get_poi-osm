@@ -543,16 +543,22 @@ jobs:
             --cvss 0 || true
 
           echo "=== ALL CVEs Report Generated ==="
-          if [ -f "cve-report-all-${version}.json" ]; then
-            SIZE=$(wc -c < "cve-report-all-${version}.json")
-            echo "Report file size: $SIZE bytes
-            
+
+          REPORT="cve-report-all-${version}.json"
+          
+          if [ -f "$REPORT" ]; then
+            SIZE=$(wc -c < "$REPORT" || echo 0)
+            printf 'Report file size: %d bytes\n' "$SIZE"
+          
             if [ "$SIZE" -gt 10 ]; then
               echo "📊 Summary of all vulnerabilities:"
-              grep -o '"vulnerability"' "cve-report-all-${version}.json" | wc -l || echo "Unable to count CVEs"
+              # Zähle Einträge robust: suche nach "vulnerability" Schlüssel im JSON
+              grep -o '"vulnerability"' "$REPORT" | wc -l || echo "Unable to count CVEs"
             else
               echo "✅ No vulnerabilities found at any level"
             fi
+          else
+            echo "⚠️  Report file not found: $REPORT"
           fi
 
       - name: Create CVE Summary Report
