@@ -7,8 +7,8 @@
  *
  * @file PoiOsm.cpp
  * @brief  Implements the PoiOsmClient class.
- * @version 0.1.0
- * @date 2026-02-11
+ * @version 1.1.0
+ * @date 2026-02-15
  *
  * @author ZHENG Robert
  * @license MIT License
@@ -30,7 +30,7 @@
  * @return QString The User-Agent string.
  */
 static QString userAgent() {
-  return QStringLiteral("get_poi-osm/1.0 (contact: example@example.com)");
+  return QStringLiteral("qt_get_poi-osm/1.1.0 (contact: example@example.com)");
 }
 
 PoiOsmClient::PoiOsmClient(QNetworkAccessManager *nam, QObject *parent)

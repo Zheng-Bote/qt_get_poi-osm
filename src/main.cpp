@@ -1,5 +1,5 @@
 /**
- * SPDX-FileComment: Main entry point for the get_poi-osm application
+ * SPDX-FileComment: Main entry point for the qt_get_poi-osm application
  * SPDX-FileType: SOURCE
  * SPDX-FileContributor: ZHENG Robert
  * SPDX-FileCopyrightText: 2026 ZHENG Robert
@@ -7,8 +7,8 @@
  *
  * @file main.cpp
  * @brief  Implements the main entry point and CLI argument parsing.
- * @version 0.1.0
- * @date 2026-02-11
+ * @version 1.1.0
+ * @date 2026-02-15
  *
  * @author ZHENG Robert
  * @license MIT License
@@ -34,8 +34,8 @@
  */
 int main(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
-  QCoreApplication::setApplicationName("get_poi-osm");
-  QCoreApplication::setApplicationVersion("1.0");
+  QCoreApplication::setApplicationName("qt_get_poi-osm");
+  QCoreApplication::setApplicationVersion("1.1.0");
 
   QCommandLineParser parser;
   parser.setApplicationDescription("OSM POI finder (JSON, 100km radius)");

@@ -1,0 +1,3 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/qt_get_poi-osmTargets.cmake")

@@ -331,7 +331,7 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
-            echo "version=1.0.0" >> $GITHUB_OUTPUT
+            echo "version=1.1.0" >> $GITHUB_OUTPUT
           fi
 
       - name: Install build dependencies
@@ -419,7 +419,7 @@ jobs:
             printf '    "timestamp": "%s",\n' "$timestamp" >> "./sbom-output/cyclonedx-${version}.json"
             printf '    "component": {\n' >> "./sbom-output/cyclonedx-${version}.json"
             printf '      "type": "application",\n' >> "./sbom-output/cyclonedx-${version}.json"
-            printf '      "name": "project",\n' >> "./sbom-output/cyclonedx-${version}.json"
+            printf '      "name": "qt_get_poi-osm",\n' >> "./sbom-output/cyclonedx-${version}.json"
             printf '      "version": "%s"\n' "$version" >> "./sbom-output/cyclonedx-${version}.json"
             printf '    }\n' >> "./sbom-output/cyclonedx-${version}.json"
             printf '  },\n' >> "./sbom-output/cyclonedx-${version}.json"
@@ -471,7 +471,7 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
-            echo "version=1.0.0" >> $GITHUB_OUTPUT
+            echo "version=1.1.0" >> $GITHUB_OUTPUT
           fi
 
       - name: Download SBOM Artifacts

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/poi-osm-schema-v1.json",
-  "title": "poi_osm result schema v1",
+  "$id": "https://example.com/qt_get_poi-osm-schema-v1.json",
+  "title": "qt_get_poi-osm result schema v1",
   "type": "object",
   "required": ["schema_version", "source", "query", "results"],
   "properties": {

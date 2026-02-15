@@ -1,4 +1,4 @@
-# get_poi-osm
+# qt_get_poi-osm
 
 A command‑line tool and shared library for querying OpenStreetMap POIs around a coordinate or address. \
 Supports whitelisting, language‑aware POI names, JSON output, and CMake FetchContent integration.
@@ -8,9 +8,9 @@ Supports whitelisting, language‑aware POI names, JSON output, and CMake FetchC
 ![QT](https://img.shields.io/badge/Community-6-41CD52?logo=qt)
 [![CMake](https://img.shields.io/badge/CMake-3.23+-blue.svg)]()
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Zheng-Bote/get_poi-osm?logo=GitHub)](https://github.com/Zheng-Bote/get_poi-osm/releases)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Zheng-Bote/qt_get_poi-osm?logo=GitHub)](https://github.com/Zheng-Bote/qt_get_poi-osm/releases)
 
-[Report Issue](https://github.com/Zheng-Bote/get_poi-osm/issues) · [Request Feature](https://github.com/Zheng-Bote/get_poi-osm/pulls)
+[Report Issue](https://github.com/Zheng-Bote/qt_get_poi-osm/issues) · [Request Feature](https://github.com/Zheng-Bote/qt_get_poi-osm/pulls)
 
 ---
 
@@ -36,9 +36,12 @@ Supports whitelisting, language‑aware POI names, JSON output, and CMake FetchC
 - Installable shared library + CLI tool
 - FetchContent‑friendly CMake package
 
+> [!NOTE]
+> There is also a version without Qt6 of this project: [get_poi-osm](https://github.com/Zheng-Bote/get_poi-osm).
+
 ## Library Shortcut / Developer Introduction
 
-**get_poi-osm** is a lightweight C++23 / Qt6 library designed to make OpenStreetMap POI discovery effortless.
+**qt_get_poi-osm** is a lightweight C++23 / Qt6 library designed to make OpenStreetMap POI discovery effortless.
 
 It wraps Nominatim (geocoding) and Overpass (POI queries) behind a clean, asynchronous Qt interface and returns structured, versioned JSON results.
 
@@ -127,8 +130,8 @@ cmake --build build -j$(nproc)
 
 This builds:
 
-- Shared library: libget_poi-osm.so (Linux)
-- CLI tool: get_poi-osm-cli
+- Shared library: libqt_get_poi-osm.so (Linux)
+- CLI tool: qt_get_poi-osm-cli
 
 ## Install
 
@@ -139,11 +142,11 @@ sudo cmake --install build
 Installs:
 
 ```bash
-/usr/local/bin/get_poi-osm-cli
-/usr/local/lib/libget_poi-osm.so
+/usr/local/bin/qt_get_poi-osm-cli
+/usr/local/lib/libqt_get_poi-osm.so
 /usr/local/include/PoiOsm.hpp
-/usr/local/share/get_poi-osm/poi-osm-schema-v1.json
-/usr/local/lib/cmake/get_poi-osm/
+/usr/local/share/qt_get_poi-osm/qt_get_poi-osm-schema-v1.json
+/usr/local/lib/cmake/qt_get_poi-osm/
 ```
 
 ## Usage (CLI)
@@ -151,13 +154,13 @@ Installs:
 ### Query by coordinates
 
 ```bash
-get_poi-osm-cli --lat 48.13743 --lon 11.57549
+qt_get_poi-osm-cli --lat 48.13743 --lon 11.57549
 ```
 
 ### Query by address
 
 ```bash
-get_poi-osm-cli --address "Marienplatz, Munich"
+qt_get_poi-osm-cli --address "Marienplatz, Munich"
 ```
 
 ### Whitelist examples
@@ -165,19 +168,19 @@ get_poi-osm-cli --address "Marienplatz, Munich"
 #### All tourism POIs
 
 ```bash
-get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist tourism
+qt_get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist tourism
 ```
 
 #### Only viewpoints
 
 ```bash
-get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist tourism=viewpoint
+qt_get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist tourism=viewpoint
 ```
 
 #### Viewpoints OR theme parks
 
 ```bash
-get_poi-osm-cli \
+qt_get_poi-osm-cli \
   --lat 48.13743 --lon 11.57549 \
   --whitelist tourism=viewpoint \
   --whitelist tourism=theme_park
@@ -186,13 +189,13 @@ get_poi-osm-cli \
 #### Restaurants only
 
 ```bash
-get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist amenity=restaurant
+qt_get_poi-osm-cli --lat 48.13743 --lon 11.57549 --whitelist amenity=restaurant
 ```
 
 #### Tourism + Restaurants
 
 ```bash
-get_poi-osm-cli \
+qt_get_poi-osm-cli \
   --lat 48.13743 --lon 11.57549 \
   --whitelist tourism \
   --whitelist amenity=restaurant
@@ -204,7 +207,7 @@ The tool outputs a versioned JSON structure (schema_version = 1).
 The full schema is installed under:
 
 ```bash
-/usr/local/share/get_poi-osm/poi-osm-schema-v1.json
+/usr/local/share/qt_get_poi-osm/qt_get_poi-osm-schema-v1.json
 ```
 
 ## Using the Library via CMake FetchContent
@@ -215,19 +218,19 @@ The full schema is installed under:
 include(FetchContent)
 
 FetchContent_Declare(
-    get_poi_osm
-    GIT_REPOSITORY https://github.com/Zheng-Bote/get_poi-osm.git
+    qt_get_poi_osm
+    GIT_REPOSITORY https://github.com/Zheng-Bote/qt_get_poi-osm.git
     GIT_TAG main
 )
 
-FetchContent_MakeAvailable(get_poi_osm)
+FetchContent_MakeAvailable(qt_get_poi_osm)
 ```
 
 ### 2. Link against the library
 
 ```bash
 add_executable(mytool main.cpp)
-target_link_libraries(mytool PRIVATE get_poi-osm::get_poi-osm)
+target_link_libraries(mytool PRIVATE qt_get_poi-osm::qt_get_poi-osm)
 ```
 
 ## Example Program Using the Library
@@ -324,17 +327,17 @@ set(CMAKE_AUTOMOC ON)
 include(FetchContent)
 
 FetchContent_Declare(
-    get_poi_osm
-    GIT_REPOSITORY https://github.com/Zheng-Bote/get_poi-osm.git
+    qt_get_poi_osm
+    GIT_REPOSITORY https://github.com/Zheng-Bote/qt_get_poi-osm.git
     GIT_TAG main
 )
 
-FetchContent_MakeAvailable(get_poi_osm)
+FetchContent_MakeAvailable(qt_get_poi_osm)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Network)
 
 add_executable(mytool main.cpp)
-target_link_libraries(mytool PRIVATE Qt6::Core Qt6::Network get_poi-osm::get_poi-osm)
+target_link_libraries(mytool PRIVATE Qt6::Core Qt6::Network qt_get_poi-osm::qt_get_poi-osm)
 ```
 
 ---
@@ -351,7 +354,7 @@ Copyright (c) 2026 ZHENG Robert
 
 ### Code Contributors
 
-![Contributors](https://img.shields.io/github/contributors/Zheng-Bote/get_poi-osm?color=dark-green)
+![Contributors](https://img.shields.io/github/contributors/Zheng-Bote/qt_get_poi-osm?color=dark-green)
 
 ---
 

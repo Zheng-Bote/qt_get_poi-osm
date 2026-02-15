@@ -8,8 +8,8 @@
  * @file PoiOsm.hpp
  * @brief Defines the PoiOsmClient class for querying OpenStreetMap Overpass
  * API.
- * @version 0.1.0
- * @date 2026-02-11
+ * @version 1.1.0
+ * @date 2026-02-15
  *
  * @author ZHENG Robert
  * @license MIT License
